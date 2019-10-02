@@ -16,6 +16,32 @@
 #define rst  17
 #define dc   16
 
+//Controls
+
+#define BUTTON_UP 11 
+#define BUTTON_DOWN 10
+#define BUTTON_RIGHT 9
+#define BUTTON_LEFT 13
+#define BUTTON_SELECT 0
+#define BUTTON_START 2
+#define BUTTON_X 8
+#define BUTTON_Y 15
+#define BUTTON_A 7
+#define BUTTON_B 6
+
+bool button_up;
+bool button_down;
+bool button_right;
+bool button_left;
+bool button_select;
+bool button_start;
+bool button_X;
+bool button_Y;
+bool button_A;
+bool button_B;
+
+//end of controls
+
 //Graphics definitions
 
 #define ALLOW_SCREEN_CLIPING false
@@ -193,7 +219,15 @@ public:
 	}
 
 	void update() {
-		
+    if(button_up)
+      posY -= ySpeed;
+    if(button_down)
+      posY += ySpeed;
+    if(button_right)
+      posX += xSpeed;
+    if(button_left)
+      posX -= xSpeed;
+/*
 		if ((posX) < (0 + SPRITE_SIZE / 2)) {
 			xSpeed = movementSpeed + random(0, 2);
 		}
@@ -212,6 +246,7 @@ public:
 
 		posX += xSpeed;
 		posY += ySpeed;
+   */
 	}
 
 };
@@ -251,7 +286,18 @@ const uint8_t player_size = 1;
 Player player[player_size];
 
 void setup() {
-	Serial.begin(115200);
+  Serial.begin(115200);
+  
+  pinMode(BUTTON_UP, INPUT_PULLUP);
+  pinMode(BUTTON_DOWN, INPUT_PULLUP);
+  pinMode(BUTTON_RIGHT, INPUT_PULLUP);
+  pinMode(BUTTON_LEFT, INPUT_PULLUP);
+  //pinMode(BUTTON_START, INPUT_PULLUP);
+  //pinMode(BUTTON_SELECT, INPUT_PULLUP);
+  //pinMode(BUTTON_X, INPUT_PULLUP);
+  //pinMode(BUTTON_Y, INPUT_PULLUP);
+  //pinMode(BUTTON_A, INPUT_PULLUP);
+  //pinMode(BUTTON_B, INPUT_PULLUP);
 
 	display.initR(INITR_144GREENTAB);
 
@@ -268,6 +314,9 @@ void setup() {
 
 // the loop function runs over and over again until power down or reset
 void loop() {
+  //Read and update the controls at the beggining of the frame
+  UpdateControls();
+  
 	//Clear bufferframe
 	for (uint16_t i = 0; i < WIDTH * HEIGHT; i++)
 	{
@@ -286,6 +335,19 @@ void loop() {
 
 	//Draw texture to display
 	display.drawRGBBitmap(0, 0, bufferTexture, WIDTH, HEIGHT);
-
+  
 	delay(16);
+}
+
+void UpdateControls(){
+  button_up = !digitalRead(BUTTON_UP);
+  button_down = !digitalRead(BUTTON_DOWN);
+  button_right = !digitalRead(BUTTON_RIGHT);
+  button_left = !digitalRead(BUTTON_LEFT);
+  button_select = !digitalRead(BUTTON_SELECT);
+  button_start = !digitalRead(BUTTON_START);
+  button_X = !digitalRead(BUTTON_X);
+  button_Y = !digitalRead(BUTTON_Y);
+  button_A = !digitalRead(BUTTON_A);
+  button_B = !digitalRead(BUTTON_B);
 }
