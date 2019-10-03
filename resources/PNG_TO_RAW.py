@@ -9,7 +9,8 @@ if len(sys.argv) is 1 and check_for_drop:
 	quit()
 
 #img_src = sys.argv[1]
-img_src = "./player.png"
+#img_src = "./player.png"
+img_src = input("Image Name: ")
 rgb_file = open("./rgb.txt", 'w')
 alpha_file = open("./alphaMap.txt", 'w')
 
