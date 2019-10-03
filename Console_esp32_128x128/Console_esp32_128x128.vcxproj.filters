@@ -21,5 +21,8 @@
     <ClInclude Include="__vm\.Console_esp32_128x128.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Textures.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -20,12 +20,12 @@
 
 //Controls
 
-#define BUTTON_UP 11 
-#define BUTTON_DOWN 10
-#define BUTTON_RIGHT 9
-#define BUTTON_LEFT 13
-//#define BUTTON_SELECT 0
-//#define BUTTON_START 2
+#define BUTTON_UP 26 
+#define BUTTON_DOWN 25
+#define BUTTON_RIGHT 27
+#define BUTTON_LEFT 14
+#define BUTTON_SELECT 4
+#define BUTTON_START 2
 //#define BUTTON_X 8
 //#define BUTTON_Y 15
 //#define BUTTON_A 7
@@ -177,6 +177,7 @@ class Player : public GameObject {
 
 public:
 	
+	bool isAI = false;
 	int16_t movementSpeed = 2;
 	int16_t xSpeed, ySpeed;
 	uint8_t rotationMode = ROT_UP;
@@ -218,51 +219,76 @@ public:
 
 	}
 
-	void update() {
+	void update() 
+	{
+		if(isAI)
+		{
+			//Should move?
+			if (random(0, 101) >= 50) 
+			{
+				uint8_t randX = random(-10, 10);
+				uint8_t randY = random(-10, 10);
+				UpdateMovement(randX, randY);
+			}
+		}
+		else
+		{
+			if (button_up) UpdateMovement(0, -ySpeed);
+			if (button_down) UpdateMovement(0, ySpeed);
+			if (button_right) UpdateMovement(xSpeed, 0);
+			if (button_left) UpdateMovement(-xSpeed, 0);
+		}
+
 		//Update the player rotation
 		UpdateRotation();
-		if (button_up)
+	}
+
+private:
+
+	void UpdateMovement(uint8_t movX, uint8_t movY) 
+	{
+		if (movY < 0)
 		{
 			rotationMode = ROT_UP;
-			if (posY - ySpeed > 0)
+			if (posY - movY > 0)
 			{
-				posY -= ySpeed;
+				posY -= movY;
 			}
 			else
 			{
-				
+
 			}
 		}
-		if (button_down)
+		if (movY > 0)
 		{
 			rotationMode = ROT_DOWN;
-			if (posY + ySpeed < HEIGHT)
+			if (posY + movY < HEIGHT)
 			{
-				posY += ySpeed;
+				posY += movY;
 			}
 			else
 			{
 
 			}
 		}
-		if (button_right)
+		if (movX > 0)
 		{
 			rotationMode = ROT_RIGHT;
-			if (posX + xSpeed < WIDTH)
+			if (posX + movX < WIDTH)
 			{
-				posX += xSpeed;
+				posX += movX;
 			}
-			else 
+			else
 			{
 
 			}
 		}
-		if (button_left)
+		if (movX < 0)
 		{
 			rotationMode = ROT_LEFT;
-			if (posX - xSpeed > 0)
+			if (posX - movX > 0)
 			{
-				posX -= xSpeed;
+				posX -= movX;
 			}
 			else
 			{
@@ -290,17 +316,15 @@ public:
 	}
 };
 
-//Obstacle obstacle;
-Player player;
-//Obstacle obstacle;
+Player player[10];
 
 void setup() {
 	pinMode(BUTTON_UP, INPUT_PULLUP);
 	pinMode(BUTTON_DOWN, INPUT_PULLUP);
 	pinMode(BUTTON_RIGHT, INPUT_PULLUP);
 	pinMode(BUTTON_LEFT, INPUT_PULLUP);
-	//pinMode(BUTTON_START, INPUT_PULLUP);
-	//pinMode(BUTTON_SELECT, INPUT_PULLUP);
+	pinMode(BUTTON_START, INPUT_PULLUP);
+	pinMode(BUTTON_SELECT, INPUT_PULLUP);
 	//pinMode(BUTTON_X, INPUT_PULLUP);
 	//pinMode(BUTTON_Y, INPUT_PULLUP);
 	//pinMode(BUTTON_A, INPUT_PULLUP);
@@ -310,7 +334,11 @@ void setup() {
 
 	spiRFID.begin(18, 19, 23, 5);
 
-	player.start();
+	for (uint8_t i = 0; i < 10; i++)
+	{
+		player[i].start();
+	}
+	player[0].isAI = false;
 }
 
 // the loop function runs over and over again until power down or reset
@@ -328,10 +356,12 @@ void loop() {
 	//Game code...
 	//display.fillScreen(random(0, 65535));
 
-	player.update();
-	player.draw();
+	for (uint8_t i = 0; i < 10; i++)
+	{
+		player[i].update();
+		player[i].draw();
+	}
 
-	//obstacle.draw();
 
 	//Draw texture to display
 	display.drawRGBBitmap(0, 0, bufferTexture, WIDTH, HEIGHT);
@@ -344,9 +374,9 @@ void UpdateControls(){
   button_down = !digitalRead(BUTTON_DOWN);
   button_right = !digitalRead(BUTTON_RIGHT);
   button_left = !digitalRead(BUTTON_LEFT);
-  /*
   button_select = !digitalRead(BUTTON_SELECT);
   button_start = !digitalRead(BUTTON_START);
+  /*
   button_X = !digitalRead(BUTTON_X);
   button_Y = !digitalRead(BUTTON_Y);
   button_A = !digitalRead(BUTTON_A);
