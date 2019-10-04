@@ -3,6 +3,7 @@
 #include <Adafruit_GFX.h>
 #include <SPI.h>
 #include "Textures.h"
+#include <EasyBuzzer.h>
 
 #define WIDTH 128
 #define HEIGHT 128
@@ -26,10 +27,10 @@
 #define BUTTON_LEFT 14
 #define BUTTON_SELECT 4
 #define BUTTON_START 2
-//#define BUTTON_X 8
-//#define BUTTON_Y 15
-//#define BUTTON_A 7
-//#define BUTTON_B 6
+#define BUTTON_A 7
+#define BUTTON_X 8
+#define BUTTON_Y 15
+#define BUTTON_B 6
 
 bool button_up;
 bool button_down;
@@ -105,7 +106,12 @@ public:
 
 	bool* alphaMap;
 
+	int16_t colorShift = 0x0000;
+
+	bool shouldRender = true;
+
 	virtual void draw() {
+		if (!shouldRender) return;
 		//Determine the starting position of this texture to draw considering it's central pivot
 		int16_t bufferStartX = posX - (SPRITE_SIZE / 2);
 		int16_t bufferStartY = posY - (SPRITE_SIZE / 2);
@@ -121,7 +127,7 @@ public:
 				//Draws on the buffer texture the texture given to this object
 				if (USE_ALPHA_MAPS && alphaMap[posBuffer(x, y, SPRITE_SIZE)]) continue;
 				//bufferTexture[posBuffer(renderPosX, renderPosY)] = texture[posBuffer(x, y, SPRITE_SIZE)];
-				bufferTexture[posBuffer(renderPosX, renderPosY)] = *(texture + posBuffer(x, y, SPRITE_SIZE));
+				bufferTexture[posBuffer(renderPosX, renderPosY)] = *(texture + posBuffer(x, y, SPRITE_SIZE)) + colorShift;
 			}
 		}
 	}
@@ -162,13 +168,30 @@ class GameObject : public Renderer {
 	
 public:
 
+	bool alive = true;
+
 	virtual void start() {
 
 	}
 
-
 	virtual void update() {
+		shouldRender = alive;
+		if (!alive) return;
+	}
 
+	bool intersects(GameObject other) {
+		//Check for intersection with other gameobject
+		if (posX >= other.posX - SPRITE_SIZE / 2 && 
+			posX < other.posX + SPRITE_SIZE / 2 &&
+			posY >= other.posY - SPRITE_SIZE / 2 &&
+			posY < other.posY + SPRITE_SIZE / 2)
+		{
+			return true;
+		}
+		else 
+		{
+			return false;
+		}
 	}
 
 };
@@ -180,21 +203,61 @@ public:
 	bool isAI = false;
 	int16_t movementSpeed = 2;
 	int16_t xSpeed, ySpeed;
+
+	int8_t deltaXMovement, deltaYMovement;
+	
 	uint8_t rotationMode = ROT_UP;
 
+	uint8_t movementChance;
+
+
 	void start() {
-		
+		GameObject::start();
 		posX = random(0, WIDTH);
 		posY = random(0, HEIGHT);
 
 		xSpeed = movementSpeed;
 		ySpeed = movementSpeed;
 
+		movementChance = random(50, 95);
 		//copyTexture(player_texture, texture);
 		//copyAlphaMap(player_alpha_map, alphaMap);
 	}
 
-	void UpdateRotation() 
+	void update() 
+	{
+		GameObject::update();
+		if(isAI)
+		{
+			//Should move?
+			if (random(0, 101) >= movementChance)
+			{
+				int8_t randX = random(-5, 6);
+				int8_t randY = random(-5, 6);
+				UpdateMovement(randX, randY);
+			}
+		}
+		else
+		{
+			if (button_up) UpdateMovement(0, -2);
+			if (button_down) UpdateMovement(0, 2);
+			if (button_right) UpdateMovement(2, 0);
+			if (button_left) UpdateMovement(-2, 0);
+
+			if (button_start) Shoot();
+		}
+		//Update the player rotation
+		UpdateRotation();
+	}
+
+private:
+
+	void Shoot() 
+	{
+		EasyBuzzer.singleBeep(500, 2, EndCollisionSound);
+	}
+
+	void UpdateRotation()
 	{
 		if (rotationMode == ROT_UP)
 		{
@@ -219,40 +282,14 @@ public:
 
 	}
 
-	void update() 
-	{
-		if(isAI)
-		{
-			//Should move?
-			if (random(0, 101) >= 50) 
-			{
-				uint8_t randX = random(-10, 10);
-				uint8_t randY = random(-10, 10);
-				UpdateMovement(randX, randY);
-			}
-		}
-		else
-		{
-			if (button_up) UpdateMovement(0, -ySpeed);
-			if (button_down) UpdateMovement(0, ySpeed);
-			if (button_right) UpdateMovement(xSpeed, 0);
-			if (button_left) UpdateMovement(-xSpeed, 0);
-		}
-
-		//Update the player rotation
-		UpdateRotation();
-	}
-
-private:
-
-	void UpdateMovement(uint8_t movX, uint8_t movY) 
+	void UpdateMovement(int8_t movX, int8_t movY)
 	{
 		if (movY < 0)
 		{
 			rotationMode = ROT_UP;
 			if (posY - movY > 0)
 			{
-				posY -= movY;
+				posY += movY;
 			}
 			else
 			{
@@ -271,6 +308,7 @@ private:
 
 			}
 		}
+
 		if (movX > 0)
 		{
 			rotationMode = ROT_RIGHT;
@@ -288,13 +326,15 @@ private:
 			rotationMode = ROT_LEFT;
 			if (posX - movX > 0)
 			{
-				posX -= movX;
+				posX += movX;
 			}
 			else
 			{
 
 			}
 		}
+		deltaXMovement = movX;
+		deltaYMovement = movY;
 	}
 };
 
@@ -302,7 +342,8 @@ class Obstacle : public GameObject {
 
 public:
 
-	void Start() {
+	void start() {
+		GameObject::start();
 		//Define a random position for the obstacles
 		posX = random(0, WIDTH);
 		posY = random(0, HEIGHT);
@@ -311,14 +352,45 @@ public:
 		alphaMap = &texture_rock_alpha[0];
 	}
 
-	void Update() {
-
+	void update() {
+		GameObject::update();
 	}
 };
 
-Player player[10];
+class Projectil : public GameObject {
+
+public:
+
+	uint8_t projectileMovX, projectileMovY;
+
+	void start() {
+		GameObject::start();
+		texture = &texture_projectile[0];
+		alphaMap = &texture_projectile_alpha[0];
+	}
+
+	void update() {
+		GameObject::update();
+		posX += projectileMovX;
+		posY += projectileMovY;
+	}
+};
+
+const uint8_t playerCount = 5;
+const uint8_t obstacleCount = 254;
+
+bool collisionSoundPlaying = false;
+
+Player player[playerCount];
+Obstacle obstacles[obstacleCount];
+GameObject apple;
+Projectil shootProj;
 
 void setup() {
+	Serial.begin(115200);
+
+	EasyBuzzer.setPin(SPEAKER);
+
 	pinMode(BUTTON_UP, INPUT_PULLUP);
 	pinMode(BUTTON_DOWN, INPUT_PULLUP);
 	pinMode(BUTTON_RIGHT, INPUT_PULLUP);
@@ -334,17 +406,37 @@ void setup() {
 
 	spiRFID.begin(18, 19, 23, 5);
 
-	for (uint8_t i = 0; i < 10; i++)
+	for (uint8_t i = 0; i < playerCount; i++)
 	{
 		player[i].start();
+		player[i].isAI = true;
+		player[i].colorShift = 0x000A;
 	}
 	player[0].isAI = false;
+	player[0].colorShift = 0x0000;
+
+	for (uint8_t i = 0; i < obstacleCount; i++)
+	{
+		obstacles[i].start();
+	}
+
+	shootProj.start();
+	shootProj.alive = false;
+
+	//Set the apple texture
+	apple.texture = &texture_apple[0];
+	apple.alphaMap = &texture_apple_alpha[0];
+	apple.start();
+	apple.posX = random(10, WIDTH - 10);
+	apple.posY = random(10, HEIGHT - 10);
 }
 
 // the loop function runs over and over again until power down or reset
 void loop() {
 	//Read and update the controls at the beggining of the frame
 	UpdateControls();
+	//Update the buzzer
+	EasyBuzzer.update();
   
 	//Clear bufferframe !!!! LETS FILL THE BACKGROUND
 	for (uint16_t i = 0; i < WIDTH * HEIGHT; i++)
@@ -353,20 +445,53 @@ void loop() {
 		bufferTexture[i] = grass_texture[i];
 	}
 
-	//Game code...
-	//display.fillScreen(random(0, 65535));
+	//Draw the apple on the screen
+	apple.draw();
 
-	for (uint8_t i = 0; i < 10; i++)
+	for (uint8_t i = 0; i < playerCount; i++)
 	{
 		player[i].update();
 		player[i].draw();
 	}
 
+	for (uint8_t i = 0; i < obstacleCount; i++)
+	{
+		//Lets check if the rock collides with the players
+		for (uint8_t x = 0; x < playerCount; x++)
+		{
+			if (obstacles[i].intersects(player[x])) 
+			{
+				obstacles[i].posX += player[x].deltaXMovement * 2;
+				obstacles[i].posY += player[x].deltaYMovement * 2;
+				if (!collisionSoundPlaying) {
+					EasyBuzzer.singleBeep(10, 2, EndCollisionSound);
+					collisionSoundPlaying = true;
+				}
+			}
+		}
+		obstacles[i].draw();
+	}
+
+	shootProj.update();
+	shootProj.draw();
+
+	//Does the player intersect the apple?
+	if (player[0].intersects(apple)) 
+	{
+		//If the player eats the apple then select a new position for the apple
+		apple.posX = random(10, WIDTH - 10);
+		apple.posY = random(10, HEIGHT - 10);
+		EasyBuzzer.singleBeep(500, 1);
+	}
 
 	//Draw texture to display
 	display.drawRGBBitmap(0, 0, bufferTexture, WIDTH, HEIGHT);
 	//Delay this frame
 	delay(16);
+}
+
+void EndCollisionSound() {
+	collisionSoundPlaying = false;
 }
 
 void UpdateControls(){
@@ -376,10 +501,10 @@ void UpdateControls(){
   button_left = !digitalRead(BUTTON_LEFT);
   button_select = !digitalRead(BUTTON_SELECT);
   button_start = !digitalRead(BUTTON_START);
+  //button_X = !digitalRead(BUTTON_X);
   /*
-  button_X = !digitalRead(BUTTON_X);
-  button_Y = !digitalRead(BUTTON_Y);
   button_A = !digitalRead(BUTTON_A);
+  button_Y = !digitalRead(BUTTON_Y);
   button_B = !digitalRead(BUTTON_B);
   */
 }
