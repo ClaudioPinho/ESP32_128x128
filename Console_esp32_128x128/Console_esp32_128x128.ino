@@ -3,35 +3,16 @@
 #include <Adafruit_GFX.h>
 #include <SPI.h>
 #include "Textures.h"
+#include "HardwarePinout.h"
 #include <EasyBuzzer.h>
+#include <SD.h>
 
 #define WIDTH 128
 #define HEIGHT 128
 
 #define SPRITE_SIZE 16
 
-#define sclk 18 // 18
-#define mosi 19 // 23
-#define cs   5
-#define rst  17
-#define dc   16
-
-//SPEAKER
-#define SPEAKER 12
-
-//Controls
-
-#define BUTTON_UP 26 
-#define BUTTON_DOWN 25
-#define BUTTON_RIGHT 27
-#define BUTTON_LEFT 14
-#define BUTTON_SELECT 4
-#define BUTTON_START 2
-#define BUTTON_A 7
-#define BUTTON_X 8
-#define BUTTON_Y 15
-#define BUTTON_B 6
-
+//Controls status
 bool button_up;
 bool button_down;
 bool button_right;
@@ -58,9 +39,12 @@ bool button_B;
 
 //MAIN VARIABLES
 
+//SD CARD READER
+//SPIClass sdReaderSPI(HSPI);
+
 //Adafruit_ST7735 display = Adafruit_ST7735(cs, dc, mosi, sclk, rst);
-SPIClass spiRFID(VSPI);
-Adafruit_ST7735 display = Adafruit_ST7735(&spiRFID, cs, dc, rst);
+SPIClass displaySPI(VSPI);
+Adafruit_ST7735 display = Adafruit_ST7735(&displaySPI, DISPLAY_CS, DISPLAY_DC, DISPLAY_RST);
 
 //Create a empty buffer frame for the display
 uint16_t bufferTexture[WIDTH * HEIGHT];
@@ -244,6 +228,12 @@ public:
 			if (button_right) UpdateMovement(2, 0);
 			if (button_left) UpdateMovement(-2, 0);
 
+			if (button_A) Serial.println("A");
+			if (button_B) Serial.println("B");
+			if (button_X) Serial.println("X");
+			if (button_Y) Serial.println("Y");
+			if (button_select) Serial.println("SELECT");
+
 			if (button_start) Shoot();
 		}
 		//Update the player rotation
@@ -389,7 +379,13 @@ Projectil shootProj;
 void setup() {
 	Serial.begin(115200);
 
+	//SETUP SLAVE SELECT PINS
+	//pinMode(SD_CS, OUTPUT);
+	//pinMode(DISPLAY_CS, OUTPUT);
+
 	EasyBuzzer.setPin(SPEAKER);
+
+	//SD.begin();
 
 	pinMode(BUTTON_UP, INPUT_PULLUP);
 	pinMode(BUTTON_DOWN, INPUT_PULLUP);
@@ -397,14 +393,19 @@ void setup() {
 	pinMode(BUTTON_LEFT, INPUT_PULLUP);
 	pinMode(BUTTON_START, INPUT_PULLUP);
 	pinMode(BUTTON_SELECT, INPUT_PULLUP);
-	//pinMode(BUTTON_X, INPUT_PULLUP);
-	//pinMode(BUTTON_Y, INPUT_PULLUP);
-	//pinMode(BUTTON_A, INPUT_PULLUP);
-	//pinMode(BUTTON_B, INPUT_PULLUP);
+	pinMode(BUTTON_X, INPUT_PULLUP);
+	pinMode(BUTTON_Y, INPUT_PULLUP);
+	pinMode(BUTTON_A, INPUT_PULLUP);
+	pinMode(BUTTON_B, INPUT_PULLUP);
+
+	//SETUP THE VSPI
+	//displaySPI = new SPIClass(VSPI);
+	displaySPI.begin(18, 19, 23, 5);
+	//displaySPI->begin();
+
 
 	display.initR(INITR_144GREENTAB);
 
-	spiRFID.begin(18, 19, 23, 5);
 
 	for (uint8_t i = 0; i < playerCount; i++)
 	{
@@ -501,10 +502,8 @@ void UpdateControls(){
   button_left = !digitalRead(BUTTON_LEFT);
   button_select = !digitalRead(BUTTON_SELECT);
   button_start = !digitalRead(BUTTON_START);
-  //button_X = !digitalRead(BUTTON_X);
-  /*
+  button_X = !digitalRead(BUTTON_X);
   button_A = !digitalRead(BUTTON_A);
   button_Y = !digitalRead(BUTTON_Y);
   button_B = !digitalRead(BUTTON_B);
-  */
 }

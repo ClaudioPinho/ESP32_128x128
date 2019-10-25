@@ -24,5 +24,8 @@
     <ClInclude Include="Textures.h">
       <Filter>Resource Files</Filter>
     </ClInclude>
+    <ClInclude Include="HardwarePinout.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
