@@ -1,0 +1,8 @@
+
+class Input {
+
+public :
+
+	
+
+};
